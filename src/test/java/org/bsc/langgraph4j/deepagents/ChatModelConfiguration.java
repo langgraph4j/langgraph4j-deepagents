@@ -1,4 +1,4 @@
-package org.bsc.langgraph4j.deepagents.agent;
+package org.bsc.langgraph4j.deepagents;
 
 import com.google.cloud.vertexai.Transport;
 import com.google.cloud.vertexai.VertexAI;

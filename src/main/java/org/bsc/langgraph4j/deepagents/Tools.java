@@ -28,6 +28,7 @@ interface Tools {
             return state.files().keySet();
         })
         .description("List all files in the mock filesystem")
+        .inputType( Void.class )
         .build();
 
         return Map.entry( "ls", tool );
@@ -50,6 +51,7 @@ interface Tools {
             }
         })
         .inputSchema( JsonSchemaGenerator.generateForType(typeRef.getType()) )
+        .inputType(typeRef.getType())
         .description(Prompts.WRITE_TODOS_DESCRIPTION)
         .build();
 
@@ -119,6 +121,7 @@ interface Tools {
                 })
                 .inputSchema( JsonSchemaGenerator.generateForType(typeRef.getType()) )
                 .description(Prompts.TOOL_DESCRIPTION)
+                .inputType(typeRef.getType())
                 .build();
 
         return Map.entry( "read_file", tool );
@@ -137,9 +140,10 @@ interface Tools {
                     SpringAIToolResponseBuilder.of( context )
                             .update( Map.of( "files", Map.of( input.filePath(), input.content() )))
                             .build( format("Updated file %s", input.filePath())) )
-        .inputSchema( JsonSchemaGenerator.generateForType(typeRef.getType()) )
-        .description("Write content to a file in the mock filesystem")
-        .build();
+                .inputSchema( JsonSchemaGenerator.generateForType(typeRef.getType()) )
+                .description("Write content to a file in the mock filesystem")
+                .inputType(typeRef.getType())
+                .build();
 
         return Map.entry( "write_file", tool );
     }
@@ -210,6 +214,7 @@ interface Tools {
                             .build( format("`Updated file %s", input.filePath()) );
                 })
                 .inputSchema( JsonSchemaGenerator.generateForType(typeRef.getType()) )
+                .inputType(typeRef.getType())
                 .description(EDIT_DESCRIPTION)
                 .build();
 

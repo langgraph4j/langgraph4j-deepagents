@@ -12,6 +12,7 @@ import static java.util.Objects.requireNonNull;
 import static org.bsc.langgraph4j.utils.CollectionsUtils.mergeMap;
 
 public interface DeepAgent {
+    org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DeepAgent.class);
 
     class State extends AgentExecutor.State {
 
@@ -46,7 +47,7 @@ public interface DeepAgent {
     }
 
     @JsonClassDescription("List of todo items to update")
-    public record ToDo(
+    record ToDo(
             @JsonProperty(required = true)
             String content,
             @JsonProperty(required = true)
@@ -57,6 +58,10 @@ public interface DeepAgent {
             IN_PROGRESS,
             COMPLETED
         }
+    }
+
+    static GraphBuilder builder() {
+        return new GraphBuilder();
     }
 
 }

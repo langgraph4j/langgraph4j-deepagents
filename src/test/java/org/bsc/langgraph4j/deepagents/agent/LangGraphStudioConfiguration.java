@@ -5,6 +5,8 @@ import org.bsc.langgraph4j.GraphRepresentation;
 import org.bsc.langgraph4j.GraphStateException;
 import org.bsc.langgraph4j.StateGraph;
 import org.bsc.langgraph4j.checkpoint.MemorySaver;
+import org.bsc.langgraph4j.deepagents.ApplicationTools;
+import org.bsc.langgraph4j.deepagents.DeepAgent;
 import org.bsc.langgraph4j.spring.ai.agentexecutor.AgentExecutorEx;
 import org.bsc.langgraph4j.studio.LangGraphStudioServer;
 import org.bsc.langgraph4j.studio.springboot.LangGraphStudioConfig;
@@ -18,11 +20,11 @@ import java.util.Objects;
 @Configuration
 public class LangGraphStudioConfiguration extends LangGraphStudioConfig {
 
-    final StateGraph<AgentExecutorEx.State> workflow;
+    // final StateGraph<DeepAgent.State> workflow;
 
     @Override
     public Map<String, LangGraphStudioServer.Instance> instanceMap() {
-
+/*
         return  Map.of( "sample", LangGraphStudioServer.Instance.builder()
                 .title("LangGraph Studio (Spring AI)")
                 .addInputStringArg( "messages", true, v -> new UserMessage( Objects.toString(v) ) )
@@ -32,19 +34,20 @@ public class LangGraphStudioConfiguration extends LangGraphStudioConfig {
                         .releaseThread(true)
                         .build())
                 .build());
-
+*/
+        return Map.of();
     }
 
     public LangGraphStudioConfiguration( /*@Qualifier("ollama")*/ ChatModel chatModel ) throws GraphStateException {
-
+/*
         this.workflow = AgentExecutorEx.builder()
                 .chatModel(chatModel, true)
-                .toolsFromObject(new TestTools())
+                .toolsFromObject(new ApplicationTools())
                 .build();
 
         var mermaid = workflow.getGraph( GraphRepresentation.Type.MERMAID, "ReAct Agent", false );
         System.out.println( mermaid.content() );
-
+*/
     }
 
 }

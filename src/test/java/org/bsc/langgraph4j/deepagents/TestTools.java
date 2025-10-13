@@ -27,6 +27,7 @@ public class TestTools {
 
         assertNotNull( taskToolSchema, "taskToolSchema is null" );
 
+        System.out.println( JsonSchemaGenerator.generateForType(String.class) );
     }
 
     @Test

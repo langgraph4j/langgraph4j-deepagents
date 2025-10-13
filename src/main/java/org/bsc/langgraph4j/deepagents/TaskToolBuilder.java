@@ -7,6 +7,7 @@ import org.bsc.langgraph4j.GraphStateException;
 import org.bsc.langgraph4j.RunnableConfig;
 import org.bsc.langgraph4j.StateGraph;
 import org.bsc.langgraph4j.spring.ai.agent.ReactAgent;
+import org.bsc.langgraph4j.spring.ai.serializer.std.SpringAIStateSerializer;
 import org.bsc.langgraph4j.spring.ai.tool.SpringAIToolResponseBuilder;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
@@ -28,12 +29,12 @@ class TaskToolBuilder {
     private ChatModel model;
 
     public TaskToolBuilder subAgents(List<DeepAgent.SubAgent> subAgents ) {
-        subAgents = List.copyOf( requireNonNull(subAgents,"subAgents cannot be null") );
+        this.subAgents = List.copyOf( requireNonNull(subAgents,"subAgents cannot be null") );
         return this;
     }
 
     public TaskToolBuilder tools( Map<String, ToolCallback> tools  ) {
-        tools = Map.copyOf( requireNonNull(tools, "tools cannot be null") );
+        this.tools = Map.copyOf( requireNonNull(tools, "tools cannot be null") );
         return this;
     }
 
@@ -58,13 +59,14 @@ class TaskToolBuilder {
 
     public ToolCallback build() throws GraphStateException {
 
+        /*
         var allTools = mergeMap( tools,
                 Map.ofEntries( Tools.ls(),
                         Tools.readFile(),
                         Tools.writeFile(),
                         Tools.editFile(),
                         Tools.writeTodos()));
-
+        */
         var agentsMap = new HashMap<String, StateGraph<DeepAgent.State>>();
 
         for( var subAgent : subAgents ) {
@@ -74,7 +76,7 @@ class TaskToolBuilder {
             if( subAgent.tools() != null ) {
                 for (var toolName : subAgent.tools()) {
 
-                    var resolvedTool = allTools.get(toolName);
+                    var resolvedTool = tools.get(toolName);
 
                     if (resolvedTool != null) {
                         subAgentTools.add(resolvedTool);
@@ -84,10 +86,11 @@ class TaskToolBuilder {
                 }
             }
             else {
-                subAgentTools.addAll( allTools.values() );
+                subAgentTools.addAll( tools.values() );
             }
 
             var reactAgent = ReactAgent.<DeepAgent.State>builder()
+                    .stateSerializer( new SpringAIStateSerializer<>( DeepAgent.State::new ) )
                     .chatModel( model )
                     .tools( subAgentTools )
                     .schema( DeepAgent.State.SCHEMA )
@@ -147,6 +150,7 @@ class TaskToolBuilder {
                           "additionalProperties" : false
                         }        
                         """, subAgents.stream().map(DeepAgent.SubAgent::name).collect(Collectors.joining(", "))))
+        .inputType( TaskToolArgs.class )
         .description(Prompts.TASK_DESCRIPTION_PREFIX.replace(
                 "{other_agents}",
                 subAgents.stream()

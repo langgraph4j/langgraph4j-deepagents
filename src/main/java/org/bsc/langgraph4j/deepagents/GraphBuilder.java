@@ -3,16 +3,18 @@ package org.bsc.langgraph4j.deepagents;
 import org.bsc.langgraph4j.GraphStateException;
 import org.bsc.langgraph4j.StateGraph;
 import org.bsc.langgraph4j.spring.ai.agent.ReactAgent;
+import org.bsc.langgraph4j.spring.ai.serializer.std.SpringAIStateSerializer;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.tool.ToolCallback;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
 
-class GraphBuilder {
+public class GraphBuilder {
 
 /**
  * Base prompt that provides instructions about available tools
@@ -46,7 +48,7 @@ It is critical that you mark todos as completed as soon as you are done with a t
 
     private List<ToolCallback> tools;
     private String instructions;
-    private ChatModel model;
+    private ChatModel chatModel;
     private List<DeepAgent.SubAgent> subAgents;
     private List<String> builtinTools;
 
@@ -60,8 +62,8 @@ It is critical that you mark todos as completed as soon as you are done with a t
         return this;
     }
 
-    public GraphBuilder model( ChatModel model ) {
-        this.model = requireNonNull( model, "model cannot be null" );
+    public GraphBuilder chatModel(ChatModel model ) {
+        this.chatModel = requireNonNull( model, "model cannot be null" );
         return this;
 
     }
@@ -93,14 +95,10 @@ It is critical that you mark todos as completed as soon as you are done with a t
         // Create task tool using createTaskTool() if subagents are provided
         if ( subAgents!= null && !subAgents.isEmpty()) {
             // Create tools map for task tool creation
-            var toolsMap = new HashMap<String, ToolCallback>();
-            for (var tool : allTools) {
-                var name = tool.getToolDefinition().name();
-                toolsMap.put(name, tool);
-            }
+            var toolsMap = allTools.stream().collect( Collectors.toUnmodifiableMap( tool -> tool.getToolDefinition().name(), tool -> tool));
 
             var taskTool = new TaskToolBuilder()
-                        .model( model )
+                        .model(chatModel)
                         .subAgents( subAgents )
                         .tools( toolsMap )
                         .build();
@@ -115,7 +113,8 @@ It is critical that you mark todos as completed as soon as you are done with a t
 
 
         return ReactAgent.<DeepAgent.State>builder()
-                .chatModel( model )
+                .stateSerializer( new SpringAIStateSerializer<>( DeepAgent.State::new ))
+                .chatModel(chatModel)
                 .tools( allTools )
                 .schema( DeepAgent.State.SCHEMA )
                 .defaultSystem( finalInstructions )
