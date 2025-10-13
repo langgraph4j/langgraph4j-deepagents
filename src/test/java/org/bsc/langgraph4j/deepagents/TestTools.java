@@ -15,7 +15,7 @@ public class TestTools {
 
     @Test
     public void testJsonSchema() {
-        var listTodoTypeRef = new TypeReference<List<ToDo>>() {};
+        var listTodoTypeRef = new TypeReference<List<DeepAgent.ToDo>>() {};
 
         var listToDoSchema = JsonSchemaGenerator.generateForType(listTodoTypeRef.getType());
 

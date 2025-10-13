@@ -2,20 +2,16 @@ package org.bsc.langgraph4j.deepagents;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.bsc.langgraph4j.GraphInput;
 import org.bsc.langgraph4j.GraphStateException;
 import org.bsc.langgraph4j.RunnableConfig;
 import org.bsc.langgraph4j.StateGraph;
-import org.bsc.langgraph4j.spring.ai.agentexecutor.AgentExecutor;
-import org.bsc.langgraph4j.spring.ai.tool.ToolResponseCommandBuilder;
+import org.bsc.langgraph4j.spring.ai.agent.ReactAgent;
+import org.bsc.langgraph4j.spring.ai.tool.SpringAIToolResponseBuilder;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.function.FunctionToolCallback;
-import org.springframework.ai.util.json.schema.JsonSchemaGenerator;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -24,40 +20,26 @@ import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.bsc.langgraph4j.utils.CollectionsUtils.mergeMap;
 
-public class TaskToolBuilder {
+class TaskToolBuilder {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(TaskToolBuilder.class);
 
     private List<DeepAgent.SubAgent> subAgents;
     private Map<String, ToolCallback> tools;
     private ChatModel model;
 
-    public TaskToolBuilder addSubAgent( DeepAgent.SubAgent subAgent ) {
-        if( subAgents == null ) {
-            subAgents = new ArrayList<>();
-        }
-        subAgents.add( subAgent );
+    public TaskToolBuilder subAgents(List<DeepAgent.SubAgent> subAgents ) {
+        subAgents = List.copyOf( requireNonNull(subAgents,"subAgents cannot be null") );
         return this;
     }
 
-    public TaskToolBuilder addTool( Map.Entry<String, ToolCallback> tool  ) {
-        return addTool( tool.getKey(), tool.getValue());
-    }
-
-    public TaskToolBuilder addTool( String name, ToolCallback tool ) {
-        requireNonNull( name, "name cannot be null");
-        requireNonNull( tool, "tool cannot be null");
-        if( tools == null ) {
-            tools = new HashMap<>();
-        }
-        tools.put( name, tool );
+    public TaskToolBuilder tools( Map<String, ToolCallback> tools  ) {
+        tools = Map.copyOf( requireNonNull(tools, "tools cannot be null") );
         return this;
-
     }
 
     public TaskToolBuilder model( ChatModel model ) {
         this.model = requireNonNull( model, "model cannot be null" );
         return this;
-
     }
 
     record TaskToolArgs(
@@ -83,7 +65,7 @@ public class TaskToolBuilder {
                         Tools.editFile(),
                         Tools.writeTodos()));
 
-        var agentsMap = new HashMap<String, StateGraph<AgentExecutor.State>>();
+        var agentsMap = new HashMap<String, StateGraph<DeepAgent.State>>();
 
         for( var subAgent : subAgents ) {
 
@@ -105,9 +87,10 @@ public class TaskToolBuilder {
                 subAgentTools.addAll( allTools.values() );
             }
 
-            var reactAgent = AgentExecutor.builder()
+            var reactAgent = ReactAgent.<DeepAgent.State>builder()
                     .chatModel( model )
                     .tools( subAgentTools )
+                    .schema( DeepAgent.State.SCHEMA )
                     .defaultSystem( subAgent.prompt() )
                     .build();
 
@@ -134,11 +117,11 @@ public class TaskToolBuilder {
 
                 var outputState = output.map( o -> o.state() ).orElseThrow();
 
-                ToolResponseCommandBuilder.of(context)
+                return SpringAIToolResponseBuilder.of(context)
                         .update(Map.of("files", outputState.value("files").orElse(Map.of())))
-                        .build();
-
-                return outputState.lastMessage().map( msg -> msg.getText() ).orElse( "Task completed");
+                        .build( outputState.lastMessage()
+                                    .map( msg -> msg.getText() )
+                                    .orElse( "Task completed"));
             }
             catch( Throwable ex ) {
 

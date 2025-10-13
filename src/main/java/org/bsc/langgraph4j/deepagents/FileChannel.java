@@ -9,7 +9,7 @@ import java.util.function.Supplier;
 
 import static org.bsc.langgraph4j.utils.CollectionsUtils.mergeMap;
 
-public class FileChannel implements Channel<Map<String,String>>  {
+class FileChannel implements Channel<Map<String,String>>  {
 
     private final Reducer<Map<String,String>> reducer;
 

@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.bsc.langgraph4j.spring.ai.tool.ToolResponseCommandBuilder;
+import org.bsc.langgraph4j.spring.ai.tool.SpringAIToolResponseBuilder;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.function.FunctionToolCallback;
 import org.springframework.ai.util.json.schema.JsonSchemaGenerator;
@@ -18,7 +18,7 @@ import java.util.regex.Pattern;
 import static java.lang.String.format;
 import static org.bsc.langgraph4j.deepagents.Prompts.EDIT_DESCRIPTION;
 
-public interface Tools {
+interface Tools {
 
 
     static Map.Entry<String,ToolCallback> ls() {
@@ -35,17 +35,16 @@ public interface Tools {
 
     static Map.Entry<String,ToolCallback> writeTodos() {
 
-        final var typeRef = new TypeReference<List<ToDo>>() {};
+        final var typeRef = new TypeReference<List<DeepAgent.ToDo>>() {};
         final var mapper = new ObjectMapper();
 
-        var tool =  FunctionToolCallback.<List<ToDo>, String>builder( "write_todos", ( input, context ) -> {
+        var tool =  FunctionToolCallback.<List<DeepAgent.ToDo>, String>builder( "write_todos", (input, context ) -> {
             try {
 
-                ToolResponseCommandBuilder.of(context)
+                return SpringAIToolResponseBuilder.of(context)
                         .update(Map.of("todos", input))
-                        .build();
+                        .build( format("Updated todo list to %s", mapper.writeValueAsString(input)) );
 
-                return format("Updated todo list to %s", mapper.writeValueAsString(input));
             } catch (JsonProcessingException e) {
                 throw new RuntimeException(e);
             }
@@ -134,14 +133,10 @@ public interface Tools {
     static Map.Entry<String,ToolCallback>  writeFile() {
         final var typeRef = new TypeReference<WriteFileArgs>() {};
 
-        var tool = FunctionToolCallback.<WriteFileArgs, String>builder( "write_file", ( input, context ) -> {
-                    ToolResponseCommandBuilder.of( context )
+        var tool = FunctionToolCallback.<WriteFileArgs, String>builder( "write_file", ( input, context ) ->
+                    SpringAIToolResponseBuilder.of( context )
                             .update( Map.of( "files", Map.of( input.filePath(), input.content() )))
-                            .build();
-
-                    return format("Updated file %s", input.filePath());
-
-        })
+                            .build( format("Updated file %s", input.filePath())) )
         .inputSchema( JsonSchemaGenerator.generateForType(typeRef.getType()) )
         .description("Write content to a file in the mock filesystem")
         .build();
@@ -210,11 +205,9 @@ public interface Tools {
                         content.replaceFirst( escapedOldString, input.newString());
 
 
-                    ToolResponseCommandBuilder.of(context)
+                    return SpringAIToolResponseBuilder.of(context)
                             .update(Map.of("files", Map.of(input.filePath(), newContent)))
-                            .build();
-
-                    return format("`Updated file %s", input.filePath());
+                            .build( format("`Updated file %s", input.filePath()) );
                 })
                 .inputSchema( JsonSchemaGenerator.generateForType(typeRef.getType()) )
                 .description(EDIT_DESCRIPTION)
