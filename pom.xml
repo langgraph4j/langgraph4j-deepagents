@@ -6,14 +6,14 @@
 
 
   <groupId>org.bsc.langgraph4j</groupId>
-  <artifactId>spring-ai-agent-archetype</artifactId>
-  <version>1.7-SNAPSHOT</version>
+  <artifactId>spring-ai-deepagents</artifactId>
+  <version>1.0-SNAPSHOT</version>
   <packaging>jar</packaging>
 
-  <url></url>
+  <url>https://github.com/langgraph4j/langgraph4j-deepagents.git</url>
 
-  <name>langgraph4j::springai::agentexecutor</name>
-  <description>Sample using Langgraph4j with SpringAI</description>
+  <name>langgraph4j::springai::deppeagents</name>
+  <description>Deepagents using Langgraph4j with SpringAI</description>
 
   <properties>
     <maven.compiler.source>17</maven.compiler.source>
