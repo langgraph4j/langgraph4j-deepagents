@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static java.util.Objects.requireNonNull;
 
@@ -35,16 +36,6 @@ It is critical that you mark todos as completed as soon as you are done with a t
 - When doing web search, prefer to use the `task` tool in order to reduce context usage.`;
 """;
 
-    /**
-     * Built-in tools that are always available in Deep Agents
-     */
-    static final List<ToolCallback> BUILTIN_TOOLS = List.of(
-            Tools.ls().getValue(),
-            Tools.readFile().getValue(),
-            Tools.writeFile().getValue(),
-            Tools.editFile().getValue(),
-            Tools.writeTodos().getValue()
-    );
 
     private List<ToolCallback> tools;
     private String instructions;
@@ -79,23 +70,29 @@ It is critical that you mark todos as completed as soon as you are done with a t
     }
 
     StateGraph<DeepAgent.State> build() throws GraphStateException {
+        if( tools == null ) {
+            tools = List.of();
+        }
 
         // Filter built-in tools if builtinTools parameter is provided
         var  selectedBuiltinTools = (builtinTools!=null)
-                ? BUILTIN_TOOLS.stream().filter(tool ->
+                ? Tools.BUILTIN.stream().filter(tool ->
                         builtinTools.stream()
                                 .anyMatch(bt ->  bt.equals( tool.getToolDefinition().name() )))
                         .toList()
-                : BUILTIN_TOOLS;
+                : Tools.BUILTIN;
 
         // Combine built-in tools with provided tools
-        var allTools = new ArrayList<>( selectedBuiltinTools );
-        allTools.addAll( tools );
+        final var allTools = new ArrayList<>( selectedBuiltinTools );
+        //allTools.addAll( tools );
 
         // Create task tool using createTaskTool() if subagents are provided
         if ( subAgents!= null && !subAgents.isEmpty()) {
             // Create tools map for task tool creation
-            var toolsMap = allTools.stream().collect( Collectors.toUnmodifiableMap( tool -> tool.getToolDefinition().name(), tool -> tool));
+            var toolsMap = Stream.concat(selectedBuiltinTools.stream(), tools.stream() )
+                                .collect( Collectors.toUnmodifiableMap(
+                                        tool -> tool.getToolDefinition().name(),
+                                        tool -> tool));
 
             var taskTool = new TaskToolBuilder()
                         .model(chatModel)

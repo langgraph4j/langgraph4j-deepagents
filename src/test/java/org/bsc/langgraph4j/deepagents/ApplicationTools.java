@@ -10,6 +10,7 @@ import org.springframework.ai.util.json.schema.JsonSchemaGenerator;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 public class ApplicationTools {
@@ -47,7 +48,9 @@ public class ApplicationTools {
                         .includeAnswer(false)
                         .build());
 
-                DeepAgent.log.info( "internetSearch\n{}", response );
+                DeepAgent.log.info( "tool: internet_search\n{}", response.results().stream()
+                        .map(TavilyApiClient.TavilyResponse.Result::title)
+                        .collect(Collectors.joining(" ,")) );
 
                 return response.results();
             })

@@ -9,6 +9,7 @@ import org.bsc.langgraph4j.StateGraph;
 import org.bsc.langgraph4j.spring.ai.agent.ReactAgent;
 import org.bsc.langgraph4j.spring.ai.serializer.std.SpringAIStateSerializer;
 import org.bsc.langgraph4j.spring.ai.tool.SpringAIToolResponseBuilder;
+import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.tool.ToolCallback;
@@ -16,6 +17,7 @@ import org.springframework.ai.tool.function.FunctionToolCallback;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
@@ -44,11 +46,7 @@ class TaskToolBuilder {
     }
 
     record TaskToolArgs(
-            @JsonProperty(required = true)
-            @JsonPropertyDescription("The task to execute with the selected agent")
             String description,
-            @JsonProperty(required = true)
-            @JsonPropertyDescription("`Name of the agent to use. Available: ${subagents.map((a) => a.name).join(\", \")}`")
             String subAgentType
     ) {
         TaskToolArgs {
@@ -112,7 +110,14 @@ class TaskToolBuilder {
 
             // final var state = new DeepAgent.State(context.getContext());
 
-            final var inputArgs = GraphInput.args( (Map.of("messages", UserMessage.builder().text(input.description()).build())));
+            var inputState = mergeMap( context.getContext(),
+                    Map.of("messages", (Object)UserMessage.builder().text(input.description()).build()),
+                    (v1, v2) -> v2);
+
+            DeepAgent.log.debug( "tool: 'task' call: {}\n{}", input, inputState);
+
+            final var inputArgs = GraphInput.args( inputState );
+
             final var config = RunnableConfig.builder().build();
             try {
 
@@ -122,7 +127,7 @@ class TaskToolBuilder {
 
                 return SpringAIToolResponseBuilder.of(context)
                         .update(Map.of("files", outputState.value("files").orElse(Map.of())))
-                        .build( outputState.lastMessage()
+                        .buildAndReturn( outputState.lastMessage()
                                     .map( msg -> msg.getText() )
                                     .orElse( "Task completed"));
             }

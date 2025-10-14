@@ -2,6 +2,7 @@ package org.bsc.langgraph4j.deepagents;
 
 import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import org.bsc.langgraph4j.spring.ai.agentexecutor.AgentExecutor;
 import org.bsc.langgraph4j.state.Channel;
 
@@ -44,13 +45,50 @@ public interface DeepAgent {
             requireNonNull( description, "description cannot be null");
         }
 
+        public static Builder builder() {
+            return new Builder();
+        }
+
+        public static class Builder {
+
+            private String name;
+            private String description;
+            private String prompt;
+            private List<String> tools;
+
+            public Builder name(String name) {
+                this.name = name;
+                return this;
+            }
+
+            public Builder description(String description) {
+                this.description = description;
+                return this;
+            }
+
+            public Builder prompt(String prompt) {
+                this.prompt = prompt;
+                return this;
+            }
+
+            public Builder tools(List<String> tools) {
+                this.tools = tools;
+                return this;
+            }
+
+            public SubAgent build() {
+                return new SubAgent(name, description, prompt, tools);
+            }
+
+        }
     }
 
-    @JsonClassDescription("List of todo items to update")
     record ToDo(
             @JsonProperty(required = true)
+            @JsonPropertyDescription("Content of the todo item")
             String content,
             @JsonProperty(required = true)
+            @JsonPropertyDescription("Status of the todo")
             Status status
     ) {
         public enum Status {

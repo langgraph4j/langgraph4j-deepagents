@@ -1,4 +1,4 @@
-package org.bsc.langgraph4j.deepagents.agent;
+package org.bsc.langgraph4j.deepagents;
 
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;

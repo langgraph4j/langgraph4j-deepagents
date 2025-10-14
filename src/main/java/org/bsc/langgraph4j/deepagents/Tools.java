@@ -1,6 +1,7 @@
 package org.bsc.langgraph4j.deepagents;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,31 +21,39 @@ import static org.bsc.langgraph4j.deepagents.Prompts.EDIT_DESCRIPTION;
 
 interface Tools {
 
-
-    static Map.Entry<String,ToolCallback> ls() {
-        var tool =  FunctionToolCallback.<Void, Collection<String>>builder( "ls", ( noArgs, context ) -> {
+    static ToolCallback ls() {
+        return  FunctionToolCallback.<Void, Collection<String>>builder( "ls", ( noArgs, context ) -> {
             var state = new DeepAgent.State(context.getContext());
 
-            return state.files().keySet();
+            var result = state.files().keySet();
+
+            DeepAgent.log.debug( "tool: 'ls' call: {}", result );
+
+            return result;
         })
         .description("List all files in the mock filesystem")
         .inputType( Void.class )
         .build();
-
-        return Map.entry( "ls", tool );
     }
 
-    static Map.Entry<String,ToolCallback> writeTodos() {
+    record writeTodosArgs(
+            @JsonProperty(required = true)
+            @JsonPropertyDescription("todo list to update")
+            List<DeepAgent.ToDo> toDos
+    ) {}
 
-        final var typeRef = new TypeReference<List<DeepAgent.ToDo>>() {};
+    static ToolCallback writeTodos() {
+
+        final var typeRef = new TypeReference<writeTodosArgs>() {};
         final var mapper = new ObjectMapper();
 
-        var tool =  FunctionToolCallback.<List<DeepAgent.ToDo>, String>builder( "write_todos", (input, context ) -> {
+        return FunctionToolCallback.<writeTodosArgs, String>builder( "write_todos", (input, context ) -> {
             try {
+                DeepAgent.log.debug( "tool: 'writeTodos' call: {}", input);
 
                 return SpringAIToolResponseBuilder.of(context)
-                        .update(Map.of("todos", input))
-                        .build( format("Updated todo list to %s", mapper.writeValueAsString(input)) );
+                        .update(Map.of("todos", input.toDos()))
+                        .buildAndReturn( format("Updated todo list to %s", mapper.writeValueAsString(input)) );
 
             } catch (JsonProcessingException e) {
                 throw new RuntimeException(e);
@@ -55,7 +64,6 @@ interface Tools {
         .description(Prompts.WRITE_TODOS_DESCRIPTION)
         .build();
 
-        return Map.entry( "write_todos", tool );
     }
 
 
@@ -64,14 +72,16 @@ interface Tools {
             String filePath,
             @JsonProperty(defaultValue="0")
             int offset,
-            @JsonProperty(defaultValue="2000")
+            @JsonProperty(required=true, defaultValue="2000")
             int limit) {}
 
-    static Map.Entry<String,ToolCallback>  readFile() {
+    static ToolCallback  readFile() {
 
         final var typeRef = new TypeReference<ReadFileArgs>() {};
 
-        var tool =  FunctionToolCallback.<ReadFileArgs, String>builder( "read_file", ( input, context ) -> {
+        return FunctionToolCallback.<ReadFileArgs, String>builder( "read_file", ( input, context ) -> {
+                    DeepAgent.log.debug( "tool: 'read_file' call: {}", input);
+
                     final var state = new DeepAgent.State(context.getContext());
 
                     final var mockFilesystem = state.files();
@@ -88,12 +98,19 @@ interface Tools {
                         return "System reminder: File exists but has empty contents";
                     }
 
+                    DeepAgent.log.debug( "tool: 'read_file' {}\n{}", input.filePath(), content);
+
                     // Split content into lines
                     final var lines = content.split("\n");
 
                     // Apply line offset and limit
-                    final var startIdx = input.offset();
-                    final var endIdx = Math.min( startIdx + input.limit(), lines.length);
+                    final int startIdx = input.offset();
+                    final int endIdx = Math.min( startIdx + input.limit(), lines.length);
+
+                    // Handle empty file
+                    if (startIdx >= endIdx) {
+                        return format("Error: illegal range error [%d,%d] reading file '%s'", startIdx, endIdx, input.filePath());
+                    }
 
                     // Handle case where offset is beyond file length
                     if (startIdx >= lines.length) {
@@ -102,19 +119,16 @@ interface Tools {
                     }
 
                     // Format output with line numbers (cat -n format)
-                    final var resultLines  = new ArrayList<String>();
+                    final var resultLines = new ArrayList<String>();
 
                     for (int i = startIdx; i < endIdx; i++) {
                         var lineContent = lines[i];
-
                         // Truncate lines longer than 2000 characters
                         if (lineContent.length() > 2000) {
                             lineContent = lineContent.substring(0, 2000);
                         }
-
                         // Line numbers start at 1, so add 1 to the index
-                        final var lineNumber = i + 1;
-                        resultLines.add( format("%6d\t%s", lineNumber, lineContent));
+                        resultLines.add( format("%6d\t%s", i + 1, lineContent));
                     }
 
                     return String.join("\n", resultLines);
@@ -123,8 +137,6 @@ interface Tools {
                 .description(Prompts.TOOL_DESCRIPTION)
                 .inputType(typeRef.getType())
                 .build();
-
-        return Map.entry( "read_file", tool );
     }
 
     record WriteFileArgs(
@@ -133,19 +145,21 @@ interface Tools {
             @JsonProperty(required = true)
             String  content) {}
 
-    static Map.Entry<String,ToolCallback>  writeFile() {
+    static ToolCallback  writeFile() {
         final var typeRef = new TypeReference<WriteFileArgs>() {};
 
-        var tool = FunctionToolCallback.<WriteFileArgs, String>builder( "write_file", ( input, context ) ->
-                    SpringAIToolResponseBuilder.of( context )
-                            .update( Map.of( "files", Map.of( input.filePath(), input.content() )))
-                            .build( format("Updated file %s", input.filePath())) )
-                .inputSchema( JsonSchemaGenerator.generateForType(typeRef.getType()) )
-                .description("Write content to a file in the mock filesystem")
-                .inputType(typeRef.getType())
-                .build();
+        return FunctionToolCallback.<WriteFileArgs, String>builder( "write_file", ( input, context ) -> {
+                DeepAgent.log.debug( "tool: 'write_file' call: {}", input);
 
-        return Map.entry( "write_file", tool );
+                return SpringAIToolResponseBuilder.of( context )
+                            .update( Map.of( "files", Map.of( input.filePath(), input.content() )))
+                            .buildAndReturn( format("Updated file %s", input.filePath()) );
+        })
+        .inputSchema( JsonSchemaGenerator.generateForType(typeRef.getType()) )
+        .description("Write content to a file in the mock filesystem")
+        .inputType(typeRef.getType())
+        .build();
+
     }
 
     record EditFileArgs(
@@ -158,10 +172,11 @@ interface Tools {
             boolean replaceAll
     ) {}
 
-    static Map.Entry<String,ToolCallback>  editFile() {
+    static ToolCallback  editFile() {
         final var typeRef = new TypeReference<EditFileArgs>() {};
 
-        var tool = FunctionToolCallback.<EditFileArgs, String>builder( "edit_file", ( input, context ) -> {
+        return FunctionToolCallback.<EditFileArgs, String>builder( "edit_file", ( input, context ) -> {
+                    DeepAgent.log.debug( "tool: 'edit_file' call: {}", input);
 
                     final var state = new DeepAgent.State(context.getContext());
 
@@ -211,13 +226,20 @@ interface Tools {
 
                     return SpringAIToolResponseBuilder.of(context)
                             .update(Map.of("files", Map.of(input.filePath(), newContent)))
-                            .build( format("`Updated file %s", input.filePath()) );
+                            .buildAndReturn( format("`Updated file %s", input.filePath()) );
                 })
                 .inputSchema( JsonSchemaGenerator.generateForType(typeRef.getType()) )
                 .inputType(typeRef.getType())
                 .description(EDIT_DESCRIPTION)
                 .build();
-
-        return Map.entry( "edit_file", tool );
     }
+
+    List<ToolCallback> BUILTIN =  List.of(
+            Tools.ls(),
+            Tools.readFile(),
+            Tools.writeFile(),
+            Tools.editFile(),
+            Tools.writeTodos()
+    );
+
 }
