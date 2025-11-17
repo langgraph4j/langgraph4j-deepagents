@@ -12,8 +12,6 @@ import org.springframework.stereotype.Controller;
 import java.util.List;
 import java.util.Map;
 
-import static java.lang.String.format;
-
 /**
  * Demonstrates the use of Spring Boot CLI to execute a task using an agent executor.
  */
@@ -51,7 +49,7 @@ public class DeepagentsConsoleController implements CommandLineRunner {
 
     }
 
-    public void runDeepagentsWithSubAgents(java.io.Console console ) throws Exception {
+    public void runDeepagentsWithSubAgents( java.io.Console console ) throws Exception {
 
         var researchSubagent = DeepAgent.SubAgent.builder()
             .name("research-agent")
@@ -197,11 +195,14 @@ public class DeepagentsConsoleController implements CommandLineRunner {
                         .recursionLimit(100)
                         .build());
 
-        var userMessage = """
-                        What is langgraph4j project?
-                        """;
+        String[] userMessages = {
+                "What is langgraph4j project?",
+                """
+                I want that you perform a deep research on: "an overview of the LangGraph4j project"
+                """
+        };
 
-        Map<String,Object> input = Map.of("messages", new UserMessage(userMessage) );
+        Map<String,Object> input = Map.of("messages", new UserMessage(userMessages[1]) );
         var runnableConfig = RunnableConfig.builder().build();
 
         var result = agent.stream(input, runnableConfig );

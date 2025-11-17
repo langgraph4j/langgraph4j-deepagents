@@ -1,6 +1,5 @@
 package org.bsc.langgraph4j.deepagents;
 
-import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import org.bsc.langgraph4j.spring.ai.agentexecutor.AgentExecutor;

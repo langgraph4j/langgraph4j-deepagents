@@ -24,7 +24,7 @@ public class ChatModelConfiguration {
         return OllamaChatModel.builder()
                 .ollamaApi(OllamaApi.builder().baseUrl("http://localhost:11434").build())
                 .defaultOptions(OllamaChatOptions.builder()
-                        .model("qwen2.5:7b")
+                        .model("qwen3:14b")
                         .temperature(0.1)
                         .build())
                 .build();
@@ -35,7 +35,6 @@ public class ChatModelConfiguration {
     public ChatModel openaiModel() {
         return OpenAiChatModel.builder()
                 .openAiApi(OpenAiApi.builder()
-                        //.baseUrl("https://api.openai.com")
                         .apiKey(System.getenv("OPENAI_API_KEY"))
                         .build())
                 .defaultOptions(OpenAiChatOptions.builder()

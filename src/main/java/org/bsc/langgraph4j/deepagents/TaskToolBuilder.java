@@ -7,6 +7,7 @@ import org.bsc.langgraph4j.GraphStateException;
 import org.bsc.langgraph4j.RunnableConfig;
 import org.bsc.langgraph4j.StateGraph;
 import org.bsc.langgraph4j.spring.ai.agent.ReactAgent;
+import org.bsc.langgraph4j.spring.ai.serializer.jackson.SpringAIJacksonStateSerializer;
 import org.bsc.langgraph4j.spring.ai.serializer.std.SpringAIStateSerializer;
 import org.bsc.langgraph4j.spring.ai.tool.SpringAIToolResponseBuilder;
 import org.springframework.ai.chat.messages.Message;
@@ -88,7 +89,8 @@ class TaskToolBuilder {
             }
 
             var reactAgent = ReactAgent.<DeepAgent.State>builder()
-                    .stateSerializer( new SpringAIStateSerializer<>( DeepAgent.State::new ) )
+                    //.stateSerializer( new SpringAIStateSerializer<>( DeepAgent.State::new ) )
+                    .stateSerializer( new SpringAIJacksonStateSerializer<>( DeepAgent.State::new ))
                     .chatModel( model )
                     .tools( subAgentTools )
                     .schema( DeepAgent.State.SCHEMA )
