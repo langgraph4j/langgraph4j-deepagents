@@ -1,109 +1,24 @@
 package org.bsc.langgraph4j.deepagents;
 
-import com.fasterxml.jackson.annotation.JsonClassDescription;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import com.fasterxml.jackson.annotation.*;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestClientResponseException;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
-/**
- * Client to interact with the Tavily API using Spring's RestClient.
- */
-@Component
-public class TavilyApiClient {
-
-    private final RestClient restClient;
-
-    /**
-     * Constructs the TavilyApiClient with a RestClient builder.
-     *
-     * @param restClientBuilder the RestClient builder
-     */
-    public TavilyApiClient(RestClient.Builder restClientBuilder, @Value("${TAVILY_API_KEY}") String tavilyApiKey) {
-        this.restClient = restClientBuilder
-                .baseUrl("https://api.tavily.com")
-                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + tavilyApiKey)
-                .build();
-    }
-
-    /**
-     * Executes a search query against the Tavily API.
-     *
-     * @param request The TavilyRequest containing query parameters.
-     * @return TavilyResponse containing the search results.
-     */
-    public TavilyResponse search(TavilyRequest request) {
-
-        if (request.query() == null || request.query().isEmpty()) {
-            throw new IllegalArgumentException("Query parameter is required.");
-        }
-        DeepAgent.log.info("Received TavilyRequest: {}", request);
-
-        // Build the request payload with all parameters, setting defaults where necessary
-        TavilyRequest requestWithApiKey = TavilyRequest.builder()
-                .query(request.query())
-                .searchDepth(request.searchDepth() != null ? request.searchDepth() : "basic")
-                .topic(request.topic() != null ? request.topic() : "general")
-                .days(request.days() != null ? request.days() : 300)
-                .maxResults(request.maxResults() != 0 ? request.maxResults() : 10)
-                .includeImages(request.includeImages())
-                .includeImageDescriptions(request.includeImageDescriptions())
-                .includeAnswer(request.includeAnswer())
-                .includeRawContent(request.includeRawContent())
-                .includeDomains(request.includeDomains() != null ? request.includeDomains() : Collections.emptyList())
-                .excludeDomains(request.excludeDomains() != null ? request.excludeDomains() : Collections.emptyList())
-                .build();
-
-        DeepAgent.log.debug("Sending request to Tavily API: query={}, searchDepth={}, topic={}, days={}, maxResults={}",
-                requestWithApiKey.query(),
-                requestWithApiKey.searchDepth(),
-                requestWithApiKey.topic(),
-                requestWithApiKey.days(),
-                requestWithApiKey.maxResults());
-
-        try {
-            TavilyResponse response = restClient.post()
-                    .uri(uriBuilder -> uriBuilder.path("/search").build())
-                    .body(requestWithApiKey)
-                    .retrieve()
-                    .body(TavilyResponse.class);
-
-            DeepAgent.log.info("Received response from Tavily API for query: {}", requestWithApiKey.query());
-            return response;
-        }
-        catch (RestClientResponseException e) {
-            DeepAgent.log.error("API Error: Status Code {}, Response Body: {}", e.getStatusCode(), e.getResponseBodyAsString());
-            throw new RuntimeException("API Error: " + e.getStatusText(), e);
-        }
-        catch (RestClientException e) {
-            DeepAgent.log.error("RestClient Error: {}", e.getMessage());
-            throw new RuntimeException("RestClient Error: " + e.getMessage(), e);
-        }
-    }
+public interface TavilyApi {
 
     /**
      * Request object for the Tavily API.
      */
     @JsonClassDescription("Request object for the Tavily API")
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    public record TavilyRequest(
+    record Request(
 
             @JsonProperty("query")
             @JsonPropertyDescription("The main search query.")
@@ -241,8 +156,8 @@ public class TavilyApiClient {
                 return this;
             }
 
-            public TavilyRequest build() {
-                return new TavilyRequest(
+            public Request build() {
+                return new Request(
                         query,
                         apiKey,
                         searchDepth,
@@ -265,25 +180,26 @@ public class TavilyApiClient {
      * Response object for the Tavily API.
      */
     @JsonClassDescription("Response object for the Tavily API")
-    public record TavilyResponse (
-        @JsonProperty("query")
-        String query,
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record Response(
+            @JsonProperty("query")
+            String query,
 
-        @JsonProperty("follow_up_questions")
-        List<String> followUpQuestions,
+            @JsonProperty("follow_up_questions")
+            List<String> followUpQuestions,
 
-        @JsonProperty("answer")
-        String answer,
+            @JsonProperty("answer")
+            String answer,
 
-        @JsonDeserialize(using = ImageDeserializer.class)
-        @JsonProperty("images")
-        List<Image> images,
+            @JsonDeserialize(using = ImageDeserializer.class)
+            @JsonProperty("images")
+            List<Image> images,
 
-        @JsonProperty("results")
-        List<Result> results,
+            @JsonProperty("results")
+            List<Result> results,
 
-        @JsonProperty("response_time")
-        float responseTime
+            @JsonProperty("response_time")
+            float responseTime
     ) {
         public record Image(
                 @JsonProperty("url")
@@ -292,7 +208,7 @@ public class TavilyApiClient {
                 @JsonProperty("description")
                 String description
         ) {
-        };
+        }
 
         public record Result(
                 @JsonProperty("title")
@@ -313,27 +229,28 @@ public class TavilyApiClient {
                 @JsonProperty("published_date")
                 String publishedDate
         ) {
-        };
+        }
     }
-    public static class ImageDeserializer extends JsonDeserializer<List<TavilyResponse.Image>> {
+
+    class ImageDeserializer extends JsonDeserializer<List<Response.Image>> {
         @Override
-        public List<TavilyApiClient.TavilyResponse.Image> deserialize(JsonParser jsonParser, DeserializationContext context)
+        public List<Response.Image> deserialize(JsonParser jsonParser, DeserializationContext context)
                 throws IOException {
 
             JsonNode node = jsonParser.getCodec().readTree(jsonParser);
-            List<TavilyApiClient.TavilyResponse.Image> images = new ArrayList<>();
+            List<Response.Image> images = new ArrayList<>();
 
             if (node.isArray()) {
                 for (JsonNode element : node) {
                     // If element is a string, treat it as a URL
                     if (element.isTextual()) {
-                        images.add(new TavilyApiClient.TavilyResponse.Image(element.asText(), null));
+                        images.add(new Response.Image(element.asText(), null));
                     }
                     // If element is an object, map it to Image
                     else if (element.isObject()) {
                         String url = element.has("url") ? element.get("url").asText() : null;
                         String description = element.has("description") ? element.get("description").asText() : null;
-                        images.add(new TavilyApiClient.TavilyResponse.Image(url, description));
+                        images.add(new Response.Image(url, description));
                     }
                 }
             }
@@ -341,4 +258,6 @@ public class TavilyApiClient {
             return images;
         }
     }
+
+    Response search(Request request);
 }

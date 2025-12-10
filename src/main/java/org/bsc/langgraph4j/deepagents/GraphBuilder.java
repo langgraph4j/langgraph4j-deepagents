@@ -4,7 +4,6 @@ import org.bsc.langgraph4j.GraphStateException;
 import org.bsc.langgraph4j.StateGraph;
 import org.bsc.langgraph4j.spring.ai.agent.ReactAgent;
 import org.bsc.langgraph4j.spring.ai.serializer.jackson.SpringAIJacksonStateSerializer;
-import org.bsc.langgraph4j.spring.ai.serializer.std.SpringAIStateSerializer;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.tool.ToolCallback;
 
@@ -49,7 +48,7 @@ public class GraphBuilder {
         return this;
     }
 
-    StateGraph<DeepAgent.State> build() throws GraphStateException {
+    public StateGraph<DeepAgent.State> build() throws GraphStateException {
         if( tools == null ) {
             tools = List.of();
         }
@@ -90,7 +89,6 @@ public class GraphBuilder {
 
 
         return ReactAgent.<DeepAgent.State>builder()
-                //.stateSerializer( new SpringAIStateSerializer<>( DeepAgent.State::new ))
                 .stateSerializer( new SpringAIJacksonStateSerializer<>( DeepAgent.State::new ))
                 .chatModel(chatModel)
                 .tools( allTools )
