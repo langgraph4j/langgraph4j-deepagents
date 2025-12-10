@@ -51,7 +51,6 @@ public class JtDeepAgentsApp {
         if( chatModel.isEmpty() ) return;
 
         var tavilyApiKey = Jt.textInput("TAVILY API KEY:")
-                .value("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")
                 .type("password")
                 .use();
 
