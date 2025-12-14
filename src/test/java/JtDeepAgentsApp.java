@@ -7,6 +7,7 @@
 //DEPS org.springframework.ai:spring-ai-ollama
 //DEPS org.springframework.ai:spring-ai-vertex-ai-gemini
 //DEPS org.springframework.ai:spring-ai-azure-openai
+//DEPS io.github.ollama4j:ollama4j:1.1.6
 
 //SOURCES org/bsc/langgraph4j/deepagents/AiModel.java
 //SOURCES org/bsc/langgraph4j/deepagents/AiPrompt.java

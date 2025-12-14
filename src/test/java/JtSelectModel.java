@@ -1,3 +1,6 @@
+//DEPS io.github.ollama4j:ollama4j:1.1.6
+
+import io.github.ollama4j.Ollama;
 import io.javelit.core.Jt;
 import io.javelit.core.JtComponent;
 import org.bsc.langgraph4j.deepagents.AiModel;
@@ -6,6 +9,7 @@ import org.springframework.ai.chat.model.ChatModel;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 public interface JtSelectModel {
 
@@ -79,11 +83,31 @@ public interface JtSelectModel {
                 }
                 return Optional.of(AiModel.OPENAI.chatModel(model.name(), Map.of("OPENAI_API_KEY", apikey)));
             } else {
-                var model = Jt.radio("Available models", List.of(
-                                new Model(Model.Provider.OLLAMA,"qwen2.5:7b"),
-                                new Model(Model.Provider.OLLAMA,"qwen3:8b"),
-                                new Model(Model.Provider.OLLAMA,"gpt-oss:20b")
-                        ))
+                var ollama = (Ollama)Jt.cache().computeIfAbsent("ollama", (key) -> new Ollama("http://localhost:11434/"));
+
+                try {
+                    if (!ollama.ping()) {
+                        Jt.error("OLLAMA is not available").use();
+                        return Optional.empty();
+                    }
+                }
+                catch( Exception ex ) {
+                    Jt.error("OLLAMA is not available: %s".formatted(ex.getMessage())).use();
+                    return Optional.empty();
+                }
+
+                var models = ollama.listModels().stream().filter( m -> {
+                        try {
+                            var capabilities = ollama.getModelDetails(m.getName()).getCapabilities();
+                            return Stream.of( capabilities ).anyMatch("tools"::equalsIgnoreCase);
+                        }
+                        catch( Exception ex ) {
+                            return false;
+                        }})
+                        .map( m -> new Model(Model.Provider.OLLAMA,m.getName()))
+                        .toList();
+
+                var model = Jt.radio("Available models", models)
                         .use();
                 return Optional.of(AiModel.OLLAMA.chatModel(model.name()));
             }
