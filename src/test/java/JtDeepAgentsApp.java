@@ -12,10 +12,10 @@
 //SOURCES org/bsc/langgraph4j/deepagents/AiModel.java
 //SOURCES org/bsc/langgraph4j/deepagents/AiPrompt.java
 //SOURCES JtTools.java
-//SOURCES JtSelectModel.java
 
 import io.javelit.core.Jt;
 import io.javelit.core.JtComponent;
+import org.bsc.javelit.JtSelectAiModel;
 import org.bsc.javelit.SpinnerComponent;
 import org.bsc.langgraph4j.CompileConfig;
 import org.bsc.langgraph4j.CompiledGraph;
@@ -47,9 +47,11 @@ public class JtDeepAgentsApp {
         Jt.title("LangGraph4J Deep Agents").use();
         Jt.markdown("### Powered by LangGraph4j and SpringAI").use();
 
-        var chatModel = JtSelectModel.get();
+        var modelOptional = JtSelectAiModel.get();
 
-        if( chatModel.isEmpty() ) return;
+        if( modelOptional.isEmpty() ) return;
+
+        var model = modelOptional.get();
 
         var tavilyApiKey = Jt.textInput("TAVILY API KEY:")
                 .type("password")
@@ -60,7 +62,14 @@ public class JtDeepAgentsApp {
             return;
         }
 
-        var agent = buildAgent( chatModel.get(), new JtTools(tavilyApiKey)  );
+        var chatModel = switch( model.provider() ) {
+            case OPENAI -> AiModel.OPENAI.chatModel( model.name(), model.attributes() );
+            case GITHUB -> AiModel.GITHUB_MODEL.chatModel( model.name(), model.attributes() );
+            case VERTEX -> AiModel.GEMINI.chatModel( model.name(), model.attributes() );
+            case OLLAMA -> AiModel.OLLAMA.chatModel( model.name(), model.attributes() );
+        };
+
+        var agent = buildAgent( chatModel, new JtTools(tavilyApiKey)  );
 
         if( agent.isEmpty() ) return;
 
